@@ -39,6 +39,9 @@ dependencies = [
     "logfire>=4.37.0",
     "kitaru[cli,mcp,worker]>=0.22.2",
     "kitaru-pydantic-ai>=0.1.0",  # recording adapter: KitaruAgent wraps build_agent() (ADR-0019 §2)
+    "ipykernel>=7.3.0",
+    "nbconvert>=7.17.1",
+    "nbclient>=0.11.0",
 ]
 
 [project.scripts]
@@ -58,6 +61,7 @@ dev = [
     # so `uv sync` / `make ci` build everywhere without a Rust toolchain. Lift once opik 2.0 Test
     # Suites are needed (ADR-0017 §6) and the build env has rustc >=1.86.
     "litellm<1.98",
+    "nbcat>=1.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]
