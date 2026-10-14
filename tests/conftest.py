@@ -8,6 +8,17 @@ import os
 # ``test_logging`` tests set their own value via ``monkeypatch.setenv`` (which wins per-test).
 os.environ["DECODE_LOG_FILE"] = ""
 
+# Pin the environment suffix for the whole suite BEFORE any module that BAKES it at import time
+# (ADR-0021 §1, task 155). ``decode/remote/app.py`` reads ``DECODE_ENV`` from ``os.environ`` at
+# import to name its app + Secret, and the ``settings`` singleton is built at import too — both are
+# fixed long before the autouse :func:`_default_decode_env` fixture (below) can monkeypatch anything,
+# so a developer with ``DECODE_ENV=prod`` exported saw failures no one else got.
+# PINNED, not deleted, on purpose: importing litellm (opik pulls it in, so the evals tests do) runs
+# ``load_dotenv()``, which copies the repo ``.env`` into ``os.environ`` — a deleted var comes right
+# back as whatever ``.env`` says, an already-present one is left alone. The per-test fixture still
+# DELETES it so spawned subprocesses stay clean.
+os.environ["DECODE_ENV"] = "local"
+
 import pytest
 from pydantic import SecretStr
 
@@ -128,6 +139,9 @@ def _default_decode_env(monkeypatch):
     Deleting the env var also scrubs it for the subprocesses tests spawn (they inherit ``os.environ``),
     so the "at ``local``, decode never imports kitaru" invariant check stays honest. The bucket tests
     set their own value with ``monkeypatch.setenv`` (which runs after this fixture, so it wins).
+
+    This fixture is the RUNTIME half only: anything that read ``DECODE_ENV`` at *import* time is
+    already fixed by then, which is why the module-level pin at the top of this file exists (task 155).
     """
     monkeypatch.delenv("DECODE_ENV", raising=False)
 
@@ -159,6 +173,7 @@ def _no_kitaru_recording(monkeypatch):
     from decode.config.settings import settings
 
     monkeypatch.setattr(settings, "kitaru_agent_id", "", raising=False)
+    monkeypatch.setattr(settings, "kitaru_api_url", "", raising=False)
 
 
 @pytest.fixture(autouse=True)
